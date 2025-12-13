@@ -1,15 +1,32 @@
 import { Request, Response } from 'express';
-import { ok } from '../../core/utils/response';
+import { ok, fail } from '../../core/utils/response';
 import { IssuanceService } from './issuance.service';
 
 export const IssuanceController = {
   async start(req: Request, res: Response) {
-    const { batchId } = req.body as { batchId: string };
-    const result = await IssuanceService.start(batchId);
-    res.json(ok(result));
+    try {
+      const batchId = req.params.batchId;
+      if (!batchId) return res.status(400).json(fail('batchId is required'));
+      const result = await IssuanceService.start(batchId);
+      res.json(ok(result));
+    } catch (err: any) {
+      console.error('Issuance start error:', err);
+      if (err?.message === 'BATCH_NOT_FOUND') return res.status(404).json(fail('Batch not found'));
+      if (err?.message === 'BATCH_NOT_VALID') return res.status(400).json(fail('Batch is not VALID'));
+      if (err?.message === 'ALREADY_STARTED') return res.status(409).json(fail('Batch already started'));
+      res.status(500).json(fail('Failed to start processing'));
+    }
   },
   async status(req: Request, res: Response) {
-    const result = await IssuanceService.status(req.params.batchId);
-    res.json(ok(result));
+    try {
+      const batchId = req.params.batchId;
+      if (!batchId) return res.status(400).json(fail('batchId is required'));
+      const result = await IssuanceService.status(batchId);
+      if (!result) return res.status(404).json(fail('Batch not found'));
+      res.json(ok(result));
+    } catch (err) {
+      console.error('Issuance status error:', err);
+      res.status(500).json(fail('Failed to get status'));
+    }
   },
 };

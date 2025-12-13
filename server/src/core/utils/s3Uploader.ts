@@ -19,3 +19,21 @@ export async function uploadToS3(
 
   return `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
 }
+
+export async function uploadBufferToS3(
+  buffer: Buffer,
+  contentType: string,
+  folder: string,
+  fileName: string
+): Promise<string> {
+  const key = `${folder}/${fileName}`;
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
+  );
+  return `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+}

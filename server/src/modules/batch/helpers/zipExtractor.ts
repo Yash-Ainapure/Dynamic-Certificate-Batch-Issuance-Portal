@@ -46,11 +46,19 @@ export function inspectZip(buf: Buffer): ZipInspection {
 
   let excelBuffer: Buffer | undefined;
   if (excelFiles.length === 1) {
-    const entry = zip.getEntry(excelFiles[0]);
+    const excelName = excelFiles[0]!;
+    const entry = zip.getEntry(excelName);
     if (entry) {
       excelBuffer = entry.getData();
     }
   }
 
   return { excelFiles, pdfFiles, duplicates, invalidPaths, excelBuffer };
+}
+
+export function getZipFileBuffer(zipBuf: Buffer, fileName: string): Buffer | null {
+  const zip = new AdmZip(zipBuf);
+  const entry = zip.getEntry(fileName);
+  if (!entry || entry.isDirectory) return null;
+  return entry.getData();
 }
