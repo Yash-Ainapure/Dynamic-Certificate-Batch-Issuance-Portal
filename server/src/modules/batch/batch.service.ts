@@ -1,7 +1,7 @@
 import { prisma } from '../../config/database';
 import { inspectZip } from './helpers/zipExtractor';
 import { parseExcel } from './helpers/excelParser';
-import { uploadToS3 } from '../../core/utils/s3Uploader';
+import { deleteObjectByUrl, uploadToS3 } from '../../core/utils/s3Uploader';
 
 export const BatchService = {
   async validateAndPersist(projectId: string, file: Express.Multer.File) {
@@ -188,5 +188,25 @@ export const BatchService = {
     const pageItems = hasMore ? items.slice(0, take) : items;
     const nextCursor = hasMore ? items[take]?.id : undefined;
     return { items: pageItems, nextCursor };
+  },
+  async delete(batchId: string) {
+    const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+    if (!batch) return { deleted: false };
+
+    // Fetch certificates to delete their files
+    const certs = await prisma.certificate.findMany({ where: { batchId }, select: { id: true, finalPdfUrl: true } });
+
+    // Delete S3 objects (best-effort)
+    try {
+      await deleteObjectByUrl(batch.zipFileUrl);
+    } catch {}
+    for (const c of certs) {
+      try { await deleteObjectByUrl(c.finalPdfUrl || undefined); } catch {}
+    }
+
+    // Delete DB rows
+    await prisma.certificate.deleteMany({ where: { batchId } });
+    await prisma.batch.delete({ where: { id: batchId } });
+    return { deleted: true };
   },
 };

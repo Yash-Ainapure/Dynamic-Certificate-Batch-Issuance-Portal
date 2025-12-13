@@ -75,7 +75,8 @@ export const IssuanceService = {
 
           // QR content
           if (!certId) throw new Error('CERT_NOT_CREATED');
-          const qrText = `http://localhost:4000/api/verify/${certId}`;
+          const appBase = (env as any).PUBLIC_APP_URL ? (env as any).PUBLIC_APP_URL.replace(/\/$/, '') : 'http://localhost:4000';
+          const qrText = `${appBase}/verify/${certId}`;
           const stamped = await stampPdf(pdfBuf, project.qrX, project.qrY, qrText);
           const finalPdfUrl = await uploadBufferToS3(stamped, 'application/pdf', 'certificates', `${batchId}/${r.excelCertId}.pdf`);
 
@@ -149,7 +150,8 @@ export const IssuanceService = {
         try {
           const pdfBuf = getZipFileBuffer(zipBuf, c.fileName);
           if (!pdfBuf) throw new Error('PDF_NOT_FOUND_IN_ZIP');
-          const qrText = `http://localhost:3000/verify/${c.id}`;
+          const appBase = (env as any).PUBLIC_APP_URL ? (env as any).PUBLIC_APP_URL.replace(/\/$/, '') : 'http://localhost:3000';
+          const qrText = `${appBase}/verify/${c.id}`;
           const stamped = await stampPdf(pdfBuf, project.qrX, project.qrY, qrText);
           const finalPdfUrl = await uploadBufferToS3(stamped, 'application/pdf', 'certificates', `${batchId}/${c.excelCertId}.pdf`);
           await prisma.certificate.update({

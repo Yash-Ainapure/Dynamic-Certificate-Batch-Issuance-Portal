@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Batch, Certificate } from '../types';
-import { getBatch, listCertificates, retryFailed } from '../api/batches';
+import { getBatch, listCertificates, retryFailed, deleteBatch, downloadBatchZip } from '../api/batches';
 import { getIssuanceStatus, startIssuance } from '../api/issuance';
 import Button from '../components/common/Button';
 import ProgressBar from '../components/common/ProgressBar';
@@ -11,10 +11,13 @@ import Section from '../components/common/Section';
 
 export default function BatchDetail() {
   const { batchId } = useParams<{ batchId: string }>();
+  const navigate = useNavigate();
   const [batch, setBatch] = useState<Batch | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -26,6 +29,8 @@ export default function BatchDetail() {
     () => batch?.processingStatus === 'PROCESSING' || batch?.processingStatus === 'QUEUED',
     [batch]
   );
+
+  const prevStatusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     async function init() {
@@ -51,8 +56,19 @@ export default function BatchDetail() {
       try {
         const s = await getIssuanceStatus(batchId);
         setBatch(s);
+        const prev = prevStatusRef.current;
+        prevStatusRef.current = s.processingStatus;
         if (s.processingStatus === 'COMPLETED' || s.processingStatus === 'FAILED') {
           setPolling(false);
+          // refresh certificates list once issuance finishes
+          await loadCerts('');
+          show(
+            s.processingStatus === 'COMPLETED' ? 'Issuance completed. Certificates updated.' : 'Issuance failed. Latest results loaded.',
+            s.processingStatus === 'COMPLETED' ? 'success' : 'error'
+          );
+        } else if (prev && prev !== s.processingStatus) {
+          // on any status transition while processing, refresh lightweight
+          await loadCerts('');
         }
       } catch {
         // no-op
@@ -96,6 +112,46 @@ export default function BatchDetail() {
     }
   }
 
+  async function handleDelete() {
+    if (!batchId || !batch) return;
+    const ok = window.confirm('Delete this batch and its files?');
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const deleted = await deleteBatch(batchId);
+      if (deleted) {
+        show('Batch deleted', 'success');
+        navigate(`/projects/${batch.projectId}`);
+      }
+    } catch (e) {
+      show((e as Error).message, 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleDownload() {
+    if (!batchId) return;
+    setDownloading(true);
+    try {
+      const blob = await downloadBatchZip(batchId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `certificates_batch_${batchId}.zip`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      show('Download started', 'success');
+    } catch (e) {
+      show((e as Error).message, 'error');
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   useEffect(() => {
     // refetch certificates when filter changes
     loadCerts();
@@ -122,15 +178,34 @@ export default function BatchDetail() {
           </div>
         </Section>
         <Section>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button onClick={handleStart} disabled={starting || isProcessing || batch.validationStatus !== 'VALID'}>
               {starting ? 'Starting…' : 'Start Issuance'}
             </Button>
             <Button onClick={handleRetry} disabled={retrying || isProcessing || (batch.failedCount ?? 0) === 0} variant="secondary">
               {retrying ? 'Retrying…' : 'Retry Failed'}
             </Button>
+            <Button onClick={handleDownload} disabled={downloading} variant="secondary">
+              {downloading ? 'Preparing…' : 'Download ZIP'}
+            </Button>
+            <Button onClick={handleDelete} disabled={deleting} variant="danger">
+              {deleting ? 'Deleting…' : 'Delete Batch'}
+            </Button>
+            {/* Status pill */}
+            {batch.processingStatus === 'COMPLETED' && (
+              <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 px-2 py-1 text-xs font-medium">Completed</span>
+            )}
+            {batch.processingStatus === 'FAILED' && (
+              <span className="inline-flex items-center rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 px-2 py-1 text-xs font-medium">Failed</span>
+            )}
+            {(batch.processingStatus === 'PROCESSING' || batch.processingStatus === 'QUEUED') && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 px-2 py-1 text-xs font-medium">
+                <span className="mr-1 h-3 w-3 inline-block border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></span>
+                {batch.processingStatus === 'QUEUED' ? 'Queued' : 'Processing…'}
+              </span>
+            )}
           </div>
-          {isProcessing && <div className="text-sm text-gray-600 dark:text-gray-400">Processing… polling for updates.</div>}
+          {isProcessing && <div className="text-sm text-gray-600 dark:text-gray-400">Polling for updates… Certificates will refresh automatically when done.</div>}
           {batch.validationStatus === 'INVALID' && (
             <div className="text-sm text-red-600 dark:text-red-400">This batch is INVALID. Fix issues and re-upload a new batch.</div>
           )}

@@ -30,7 +30,20 @@ export async function listCertificates(params: { batchId: string; status?: strin
   return unwrap<{ items: Certificate[]; nextCursor?: string }>(resp as any);
 }
 
+export async function deleteBatch(batchId: string): Promise<boolean> {
+  const resp = await axiosClient.delete(`${endpoints.batches}/${batchId}`);
+  const data = unwrap<{ deleted: boolean }>(resp as any);
+  return !!data.deleted;
+}
+
 export async function retryFailed(batchId: string) {
   const resp = await axiosClient.post(`${endpoints.batches}/${batchId}/retry-failed`);
   return unwrap<{ retried: true }>(resp as any);
+}
+
+export async function downloadBatchZip(batchId: string): Promise<Blob> {
+  const resp = await axiosClient.get(`${endpoints.batches}/${batchId}/download`, {
+    responseType: 'blob',
+  });
+  return resp.data as Blob;
 }

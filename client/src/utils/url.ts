@@ -6,5 +6,6 @@ export function buildApiUrl(path: string) {
 }
 
 export function buildVerifyUrl(certId: string) {
-  return buildApiUrl(`/verify/${certId}`);
+  // Frontend route for verification page
+  return `/verify/${certId}`;
 }

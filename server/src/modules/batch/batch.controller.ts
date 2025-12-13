@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import { ok, fail } from '../../core/utils/response';
 import { BatchService } from './batch.service';
 import { IssuanceService } from '../issuance/issuance.service';
+import AdmZip from 'adm-zip';
+import { prisma } from '../../config/database';
+import { s3 } from '../../config/aws-s3';
+import { env } from '../../config/env';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { extractS3KeyFromUrl } from '../../core/utils/s3Uploader';
 
 export const BatchController = {
   async upload(req: Request, res: Response) {
@@ -80,6 +86,55 @@ export const BatchController = {
       if (err?.message === 'BATCH_NOT_FOUND') return res.status(404).json(fail('Batch not found'));
       if (err?.message === 'BATCH_PROCESSING') return res.status(409).json(fail('Batch is currently processing'));
       return res.status(500).json(fail('Failed to retry failed certificates'));
+    }
+  },
+  async delete(req: Request, res: Response) {
+    try {
+      const { batchId } = req.params as { batchId: string };
+      if (!batchId) return res.status(400).json(fail('batchId is required'));
+      const result = await BatchService.delete(batchId);
+      if (!result.deleted) return res.status(404).json(fail('Batch not found'));
+      return res.json(ok({ deleted: true }));
+    } catch (err) {
+      console.error('Delete batch error:', err);
+      return res.status(500).json(fail('Failed to delete batch'));
+    }
+  },
+  async download(req: Request, res: Response) {
+    try {
+      const { batchId } = req.params as { batchId: string };
+      if (!batchId) return res.status(400).json(fail('batchId is required'));
+
+      const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+      if (!batch) return res.status(404).json(fail('Batch not found'));
+
+      const certs = await prisma.certificate.findMany({
+        where: { batchId, status: 'ISSUED' as any, NOT: { finalPdfUrl: null } },
+        select: { excelCertId: true, finalPdfUrl: true },
+        orderBy: { id: 'asc' },
+      });
+      if (certs.length === 0) {
+        return res.status(400).json(fail('No issued certificates to download'));
+      }
+
+      const zip = new AdmZip();
+      for (const c of certs) {
+        const key = extractS3KeyFromUrl(c.finalPdfUrl!);
+        if (!key) continue;
+        const obj = await s3.send(new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+        const bytes = await obj.Body?.transformToByteArray();
+        if (!bytes) continue;
+        const fileName = `${c.excelCertId}.pdf`;
+        zip.addFile(fileName, Buffer.from(bytes));
+      }
+
+      const zipBuffer = zip.toBuffer();
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="batch-${batchId}-certificates.zip"`);
+      res.send(zipBuffer);
+    } catch (err) {
+      console.error('Download batch certificates error:', err);
+      return res.status(500).json(fail('Failed to prepare download'));
     }
   },
 };

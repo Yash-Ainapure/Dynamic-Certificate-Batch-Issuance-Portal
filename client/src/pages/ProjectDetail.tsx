@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getProject } from '../api/projects';
-import { getBatches, uploadBatchZip } from '../api/batches';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getProject, deleteProject } from '../api/projects';
+import { getBatches, uploadBatchZip, deleteBatch } from '../api/batches';
 import type { Batch, Project } from '../types';
 import Button from '../components/common/Button';
 import { useToast } from '../components/common/toast';
@@ -11,6 +11,7 @@ import { upsertRecentProject } from '../utils/recent';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
@@ -18,6 +19,8 @@ export default function ProjectDetail() {
   const [loading, setLoading] = useState(false);
   const [lastSummary, setLastSummary] = useState<any | null>(null);
   const [createdBatchId, setCreatedBatchId] = useState<string | null>(null);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
   const { show } = useToast();
 
   useEffect(() => {
@@ -40,6 +43,43 @@ export default function ProjectDetail() {
       setNextCursor(res.nextCursor);
     } catch (e) {
       show((e as Error).message, 'error');
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!id) return;
+    const ok = window.confirm('Delete this project and all its batches and files? This cannot be undone.');
+    if (!ok) return;
+    setDeletingProject(true);
+    try {
+      const deleted = await deleteProject(id);
+      if (deleted) {
+        show('Project deleted', 'success');
+        navigate('/');
+      } else {
+        show('Project not found', 'error');
+      }
+    } catch (e) {
+      show((e as Error).message, 'error');
+    } finally {
+      setDeletingProject(false);
+    }
+  }
+
+  async function handleDeleteBatch(batchId: string) {
+    const ok = window.confirm('Delete this batch and its files?');
+    if (!ok) return;
+    setDeletingBatchId(batchId);
+    try {
+      const deleted = await deleteBatch(batchId);
+      if (deleted) {
+        setBatches((prev) => prev.filter((b) => b.id !== batchId));
+        show('Batch deleted', 'success');
+      }
+    } catch (e) {
+      show((e as Error).message, 'error');
+    } finally {
+      setDeletingBatchId(null);
     }
   }
 
@@ -69,6 +109,11 @@ export default function ProjectDetail() {
           <div className="text-sm text-white">Issuer: {project.issuer}</div>
           <div className="text-sm text-white">Issue Date: {project.issueDate}</div>
           <div className="text-sm text-white">QR: ({project.qrX}, {project.qrY})</div>
+          <div className="pt-3">
+            <Button onClick={handleDeleteProject} variant="danger" disabled={deletingProject}>
+              {deletingProject ? 'Deleting…' : 'Delete Project'}
+            </Button>
+          </div>
         </Section>
       ) : (
         <Section>
@@ -117,10 +162,21 @@ export default function ProjectDetail() {
       <Section title="Batches" className="space-y-3">
         <div className="space-y-2">
           {batches.map((b) => (
-            <Link key={b.id} to={`/batches/${b.id}`} className="block rounded p-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
-              <div className="font-medium text-gray-900 dark:text-gray-100">Batch {b.id}</div>
-              <div className="text-sm text-gray-700 dark:text-gray-300">Validation: {b.validationStatus} | Processing: {b.processingStatus}</div>
-            </Link>
+            <div key={b.id} className="flex items-center justify-between rounded p-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
+              <Link to={`/batches/${b.id}`} className="flex-1 min-w-0">
+                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">Batch {b.id}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300">Validation: {b.validationStatus} | Processing: {b.processingStatus}</div>
+              </Link>
+              <div className="pl-3">
+                <Button
+                  variant="danger"
+                  disabled={deletingBatchId === b.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBatch(b.id); }}
+                >
+                  {deletingBatchId === b.id ? 'Deleting…' : 'Delete'}
+                </Button>
+              </div>
+            </div>
           ))}
           {batches.length === 0 && <div className="text-gray-500 dark:text-gray-400">No batches yet.</div>}
         </div>

@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import { CreateProjectDTO } from './project.interface';
+import { deleteObjectByUrl } from '../../core/utils/s3Uploader';
 
 export const ProjectService = {
   async list(take: number, cursor?: string) {
@@ -36,5 +37,28 @@ export const ProjectService = {
   },
   async get(id: string) {
     return prisma.project.findUnique({ where: { id } });
+  },
+  async delete(id: string) {
+    const project = await prisma.project.findUnique({ where: { id } });
+    if (!project) return { deleted: false };
+
+    // Delete project template (best-effort)
+    try { await deleteObjectByUrl(project.templateUrl); } catch {}
+
+    // Find batches and certificates
+    const batches = await prisma.batch.findMany({ where: { projectId: id }, select: { id: true, zipFileUrl: true } });
+    for (const b of batches) {
+      try { await deleteObjectByUrl(b.zipFileUrl || undefined); } catch {}
+      const certs = await prisma.certificate.findMany({ where: { batchId: b.id }, select: { finalPdfUrl: true } });
+      for (const c of certs) {
+        try { await deleteObjectByUrl(c.finalPdfUrl || undefined); } catch {}
+      }
+    }
+
+    // Delete rows in DB
+    await prisma.certificate.deleteMany({ where: { batch: { projectId: id } } });
+    await prisma.batch.deleteMany({ where: { projectId: id } });
+    await prisma.project.delete({ where: { id } });
+    return { deleted: true };
   },
 };

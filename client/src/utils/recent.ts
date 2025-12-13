@@ -1,6 +1,6 @@
 export type RecentProject = { id: string; name: string; viewedAt: number };
 
-const KEY = 'dcerts.recentProjects';
+const KEY = 'aicerts.recentProjects';
 const MAX = 8;
 
 export function getRecentProjects(): RecentProject[] {

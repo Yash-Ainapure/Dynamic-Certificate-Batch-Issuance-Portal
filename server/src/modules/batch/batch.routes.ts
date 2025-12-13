@@ -8,4 +8,7 @@ r.get('/', BatchController.list); // expects query: projectId, limit?, cursor?
 r.get('/:batchId', BatchController.get);
 r.get('/:batchId/certificates', BatchController.listCertificates); // query: status?, limit?, cursor?
 r.post('/:batchId/retry-failed', BatchController.retryFailed);
+r.delete('/:batchId', BatchController.delete);
+r.get('/:batchId/download', BatchController.download);
+
 export default r;

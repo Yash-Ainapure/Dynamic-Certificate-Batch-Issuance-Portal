@@ -50,4 +50,16 @@ export const ProjectController = {
       return res.status(500).json(fail("Failed to get project"));
     }
   },
+  async delete(req: Request, res: Response) {
+    try {
+      const id = req.params.id;
+      if (!id) return res.status(400).json(fail('Invalid ID'));
+      const result = await ProjectService.delete(id);
+      if (!result.deleted) return res.status(404).json(fail('Project not found'));
+      return res.json(ok({ deleted: true }));
+    } catch (err) {
+      console.error('Delete project error at project.controller.ts:', err);
+      return res.status(500).json(fail('Failed to delete project'));
+    }
+  },
 };
