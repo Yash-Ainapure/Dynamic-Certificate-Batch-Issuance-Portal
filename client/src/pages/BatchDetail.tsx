@@ -6,7 +6,6 @@ import { getIssuanceStatus, startIssuance } from '../api/issuance';
 import Button from '../components/common/Button';
 import ProgressBar from '../components/common/ProgressBar';
 import { useToast } from '../components/common/toast';
-import { buildVerifyUrl } from '../utils/url';
 import Section from '../components/common/Section';
 
 export default function BatchDetail() {
@@ -260,9 +259,12 @@ export default function BatchDetail() {
               <div>{c.status}</div>
               <div>
                 {c.status === 'ISSUED' ? (
-                  <a className="text-blue-600 hover:underline" href={buildVerifyUrl(c.id)} target="_blank" rel="noreferrer">
+                  <button 
+                    className="text-blue-600 hover:underline" 
+                    onClick={() => navigate(`/verify/${c.id}`)}
+                  >
                     Open verification
-                  </a>
+                  </button>
                 ) : c.status === 'FAILED' ? (
                   <span title={c.validationError || ''} className="text-red-600 dark:text-red-400">View error</span>
                 ) : (
