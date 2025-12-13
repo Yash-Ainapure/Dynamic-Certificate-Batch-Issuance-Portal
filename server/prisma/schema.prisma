@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 2. Enums (Strict status tracking)
+enum BatchStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum CertStatus {
+  PENDING      // Validated but not yet stamped
+  QUEUED       // Added to the processing queue
+  ISSUED       // PDF generated with QR code
+  FAILED       // Error during generation
+  INVALID      // Excel row didn't match a file in ZIP
+}
+
+// 3. Models
+
+// STEP 1: The "Project" (Config)
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  issuer      String
+  issueDate   DateTime
+
+  // Template Details
+  templateUrl String
+  qrX         Float
+  qrY         Float
+
+  batches     Batch[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// STEP 2: The "Batch" (The ZIP Upload)
+model Batch {
+  id             String      @id @default(uuid())
+
+  projectId      String
+  project        Project     @relation(fields: [projectId], references: [id])
+
+  // Statistics for Dashboard
+  totalRecords   Int         @default(0)
+  validRecords   Int         @default(0)
+  zipFileUrl     String?
+
+  status         BatchStatus @default(UPLOADED)
+
+  certificates   Certificate[]
+
+  createdAt      DateTime    @default(now())
+}
+
+// STEP 3: The "Certificate" (Individual Student Record)
+model Certificate {
+  id            String     @id @default(uuid())
+
+  batchId       String
+  batch         Batch      @relation(fields: [batchId], references: [id])
+
+  // Data parsed from Excel
+  excelCertId   String
+  studentName   String
+  fileName      String
+
+  // Processing Logic
+  status        CertStatus @default(PENDING)
+  validationError String?
+
+  // The Final Result
+  finalPdfUrl   String?
+
+  processedAt   DateTime?
+}
