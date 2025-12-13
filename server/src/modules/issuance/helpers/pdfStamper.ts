@@ -18,9 +18,13 @@ export async function stampPdf(buf: Buffer, x: number, y: number, qrText: string
   const qrWidth = 120;
   const qrHeight = 120;
 
+  // If the UI captured coordinates from the top-left, convert to pdf-lib's bottom-left origin
+  const pageHeight = page.getHeight();
+  const yFromBottom = pageHeight - y - qrHeight;
+
   page.drawImage(pngImage, {
     x,
-    y,
+    y: yFromBottom,
     width: qrWidth,
     height: qrHeight,
   });

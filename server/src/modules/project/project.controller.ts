@@ -4,6 +4,17 @@ import { ok, fail } from '../../core/utils/response';
 import { uploadToS3 } from '../../core/utils/s3Uploader';
 
 export const ProjectController = {
+  async list(req: Request, res: Response) {
+    try {
+      const { limit, cursor } = req.query as { limit?: string; cursor?: string };
+      const take = Math.min(Number(limit) || 20, 100);
+      const result = await ProjectService.list(take, cursor || undefined);
+      return res.json(ok(result));
+    } catch (err) {
+      console.error('Project list error at project.controller.ts:', err);
+      return res.status(500).json(fail('Failed to list projects'));
+    }
+  },
   async create(req: Request, res: Response) {
     try {
       const file = (req as any).file as Express.Multer.File | undefined;

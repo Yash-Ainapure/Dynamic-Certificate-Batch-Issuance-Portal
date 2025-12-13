@@ -159,4 +159,34 @@ export const BatchService = {
     });
     return { batch, summary };
   },
+  async list(projectId: string, take: number, cursor?: string) {
+    const items = await prisma.batch.findMany({
+      where: { projectId },
+      take: take + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { createdAt: 'desc' },
+    });
+    const hasMore = items.length > take;
+    const pageItems = hasMore ? items.slice(0, take) : items;
+    const nextCursor = hasMore ? items[take]?.id : undefined;
+    return { items: pageItems, nextCursor };
+  },
+  async get(batchId: string) {
+    return prisma.batch.findUnique({ where: { id: batchId } });
+  },
+  async listCertificates(batchId: string, status: string | undefined, take: number, cursor?: string) {
+    const where: any = { batchId };
+    if (status) where.status = status;
+    const items = await prisma.certificate.findMany({
+      where,
+      take: take + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: [{ processedAt: 'desc' as const }, { id: 'desc' as const }],
+      select: { id: true, excelCertId: true, fileName: true, status: true, finalPdfUrl: true, validationError: true, processedAt: true },
+    });
+    const hasMore = items.length > take;
+    const pageItems = hasMore ? items.slice(0, take) : items;
+    const nextCursor = hasMore ? items[take]?.id : undefined;
+    return { items: pageItems, nextCursor };
+  },
 };

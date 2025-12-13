@@ -75,7 +75,7 @@ export const IssuanceService = {
 
           // QR content
           if (!certId) throw new Error('CERT_NOT_CREATED');
-          const qrText = `http://localhost:3000/verify/${certId}`;
+          const qrText = `http://localhost:4000/api/verify/${certId}`;
           const stamped = await stampPdf(pdfBuf, project.qrX, project.qrY, qrText);
           const finalPdfUrl = await uploadBufferToS3(stamped, 'application/pdf', 'certificates', `${batchId}/${r.excelCertId}.pdf`);
 
@@ -117,5 +117,74 @@ export const IssuanceService = {
   async status(batchId: string) {
     const batch = await prisma.batch.findUnique({ where: { id: batchId } });
     return batch;
+  },
+  async retryFailed(batchId: string) {
+    const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+    if (!batch) throw new Error('BATCH_NOT_FOUND');
+    if (batch.processingStatus === 'PROCESSING' || batch.processingStatus === 'QUEUED') {
+      throw new Error('BATCH_PROCESSING');
+    }
+    if (!batch.zipFileUrl) throw new Error('ZIP_MISSING');
+
+    const project = await prisma.project.findUnique({ where: { id: batch.projectId } });
+    if (!project) throw new Error('BATCH_NOT_FOUND');
+
+    // Mark processing for retry window (do not reset counters; we will update increments)
+    await prisma.batch.update({ where: { id: batchId }, data: { processingStatus: 'PROCESSING' as any } });
+
+    try {
+      const zipBuf = await downloadZipByUrl(batch.zipFileUrl);
+      // Fetch FAILED certificates for this batch
+      const failedCerts = await prisma.certificate.findMany({
+        where: { batchId, status: 'FAILED' as any },
+        select: { id: true, excelCertId: true, fileName: true },
+        orderBy: { id: 'asc' },
+      });
+
+      let processedInc = 0;
+      let successInc = 0;
+      let failedInc = 0;
+
+      for (const c of failedCerts) {
+        try {
+          const pdfBuf = getZipFileBuffer(zipBuf, c.fileName);
+          if (!pdfBuf) throw new Error('PDF_NOT_FOUND_IN_ZIP');
+          const qrText = `http://localhost:3000/verify/${c.id}`;
+          const stamped = await stampPdf(pdfBuf, project.qrX, project.qrY, qrText);
+          const finalPdfUrl = await uploadBufferToS3(stamped, 'application/pdf', 'certificates', `${batchId}/${c.excelCertId}.pdf`);
+          await prisma.certificate.update({
+            where: { id: c.id },
+            data: { status: 'ISSUED' as any, finalPdfUrl, processedAt: new Date(), validationError: null },
+          });
+          successInc++;
+        } catch (e: any) {
+          await prisma.certificate.update({
+            where: { id: c.id },
+            data: { status: 'FAILED' as any, validationError: e?.message || 'PROCESSING_FAILED', processedAt: new Date() },
+          });
+          failedInc++;
+        } finally {
+          processedInc++;
+          await prisma.batch.update({
+            where: { id: batchId },
+            data: {
+              processedCount: { increment: 1 },
+              successCount: successInc ? { increment: 1 } : undefined,
+              failedCount: failedInc ? { increment: 1 } : undefined,
+            } as any,
+          });
+          // Reset inc flags so we only increment once per loop iteration
+          successInc = 0;
+          failedInc = 0;
+        }
+      }
+
+      await prisma.batch.update({ where: { id: batchId }, data: { processingStatus: 'COMPLETED' as any, finishedAt: new Date() } });
+    } catch (e) {
+      await prisma.batch.update({ where: { id: batchId }, data: { processingStatus: 'FAILED' as any, finishedAt: new Date() } });
+      throw e;
+    }
+
+    return { retried: true };
   },
 };
