@@ -30,15 +30,14 @@ export async function listCertificates(params: { batchId: string; status?: strin
   return unwrap<{ items: Certificate[]; nextCursor?: string }>(resp as any);
 }
 
-export async function deleteBatch(batchId: string): Promise<boolean> {
+export async function deleteBatch(batchId: string): Promise<{ queued?: boolean; deleted?: boolean }> {
   const resp = await axiosClient.delete(`${endpoints.batches}/${batchId}`);
-  const data = unwrap<{ deleted: boolean }>(resp as any);
-  return !!data.deleted;
+  return unwrap<{ queued?: boolean; deleted?: boolean }>(resp as any);
 }
 
 export async function retryFailed(batchId: string) {
   const resp = await axiosClient.post(`${endpoints.batches}/${batchId}/retry-failed`);
-  return unwrap<{ retried: true }>(resp as any);
+  return unwrap<{ queued?: boolean; retried?: boolean }>(resp as any);
 }
 
 export async function downloadBatchZip(batchId: string): Promise<Blob> {

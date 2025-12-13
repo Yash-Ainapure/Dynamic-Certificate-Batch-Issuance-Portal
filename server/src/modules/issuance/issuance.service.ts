@@ -75,7 +75,7 @@ export const IssuanceService = {
 
           // QR content
           if (!certId) throw new Error('CERT_NOT_CREATED');
-          const appBase = (env as any).PUBLIC_APP_URL ? (env as any).PUBLIC_APP_URL.replace(/\/$/, '') : 'http://localhost:4000';
+          const appBase = (env as any).PUBLIC_APP_URL ? (env as any).PUBLIC_APP_URL.replace(/\/$/, '') : 'http://localhost:5173';
           const qrText = `${appBase}/verify/${certId}`;
           const stamped = await stampPdf(pdfBuf, project.qrX, project.qrY, qrText);
           const finalPdfUrl = await uploadBufferToS3(stamped, 'application/pdf', 'certificates', `${batchId}/${r.excelCertId}.pdf`);

@@ -5,7 +5,8 @@ import type { Batch } from '../types';
 
 export async function startIssuance(batchId: string) {
   const resp = await axiosClient.post(`${endpoints.issuance}/batches/${batchId}/start`);
-  return unwrap<{ started: true }>(resp as any);
+  // backend now returns { queued: true }
+  return unwrap<{ queued?: boolean; started?: boolean }>(resp as any);
 }
 
 export async function getIssuanceStatus(batchId: string): Promise<Batch> {

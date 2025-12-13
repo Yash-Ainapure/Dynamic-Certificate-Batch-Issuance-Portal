@@ -20,8 +20,7 @@ export async function listProjects(params: { limit?: number; cursor?: string }) 
   return unwrap<{ items: Project[]; nextCursor?: string }>(resp as any);
 }
 
-export async function deleteProject(id: string): Promise<boolean> {
+export async function deleteProject(id: string): Promise<{ queued?: boolean; deleted?: boolean }> {
   const resp = await axiosClient.delete(`${endpoints.projects}/${id}`);
-  const data = unwrap<{ deleted: boolean }>(resp as any);
-  return !!data.deleted;
+  return unwrap<{ queued?: boolean; deleted?: boolean }>(resp as any);
 }

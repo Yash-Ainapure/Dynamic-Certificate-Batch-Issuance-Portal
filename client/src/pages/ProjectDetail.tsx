@@ -52,13 +52,10 @@ export default function ProjectDetail() {
     if (!ok) return;
     setDeletingProject(true);
     try {
-      const deleted = await deleteProject(id);
-      if (deleted) {
-        show('Project deleted', 'success');
-        navigate('/');
-      } else {
-        show('Project not found', 'error');
-      }
+      await deleteProject(id);
+      // Backend now queues the deletion; inform the user and navigate away
+      show('Project deletion queued', 'success');
+      navigate('/');
     } catch (e) {
       show((e as Error).message, 'error');
     } finally {
@@ -71,11 +68,10 @@ export default function ProjectDetail() {
     if (!ok) return;
     setDeletingBatchId(batchId);
     try {
-      const deleted = await deleteBatch(batchId);
-      if (deleted) {
-        setBatches((prev) => prev.filter((b) => b.id !== batchId));
-        show('Batch deleted', 'success');
-      }
+      await deleteBatch(batchId);
+      // Optimistically remove from UI; deletion runs in background
+      setBatches((prev) => prev.filter((b) => b.id !== batchId));
+      show('Batch deletion queued', 'success');
     } catch (e) {
       show((e as Error).message, 'error');
     } finally {

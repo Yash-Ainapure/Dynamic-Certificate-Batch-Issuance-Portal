@@ -164,7 +164,7 @@ export default function BatchDetail() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Batch {batch.id}</h1>
+        <h1 className="text-2xl font-semibold dark:text-gray-400 text-black ">Batch {batch.id}</h1>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

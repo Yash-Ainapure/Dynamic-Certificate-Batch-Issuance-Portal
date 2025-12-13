@@ -13,7 +13,7 @@ const Ctx = createContext<ThemeCtx | null>(null);
 const STORAGE_KEY = 'dcerts.theme';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
     const saved = (localStorage.getItem(STORAGE_KEY) as Theme | null) || null;

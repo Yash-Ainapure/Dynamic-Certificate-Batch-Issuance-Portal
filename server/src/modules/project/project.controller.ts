@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProjectService } from './project.service';
 import { ok, fail } from '../../core/utils/response';
 import { uploadToS3 } from '../../core/utils/s3Uploader';
+import { runInBackground } from '../../core/utils/asyncRunner';
 
 export const ProjectController = {
   async list(req: Request, res: Response) {
@@ -54,9 +55,9 @@ export const ProjectController = {
     try {
       const id = req.params.id;
       if (!id) return res.status(400).json(fail('Invalid ID'));
-      const result = await ProjectService.delete(id);
-      if (!result.deleted) return res.status(404).json(fail('Project not found'));
-      return res.json(ok({ deleted: true }));
+      // Run deletion in background to avoid blocking the request
+      runInBackground(() => ProjectService.delete(id), `project:delete:${id}`);
+      return res.json(ok({ queued: true }));
     } catch (err) {
       console.error('Delete project error at project.controller.ts:', err);
       return res.status(500).json(fail('Failed to delete project'));

@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
 import { ok, fail } from '../../core/utils/response';
 import { IssuanceService } from './issuance.service';
+import { runInBackground } from '../../core/utils/asyncRunner';
 
 export const IssuanceController = {
   async start(req: Request, res: Response) {
     try {
       const batchId = req.params.batchId;
       if (!batchId) return res.status(400).json(fail('batchId is required'));
-      const result = await IssuanceService.start(batchId);
-      res.json(ok(result));
+      // Do not block the request; queue processing and return immediately
+      runInBackground(() => IssuanceService.start(batchId), `issuance:start:${batchId}`);
+      res.json(ok({ queued: true }));
     } catch (err: any) {
       console.error('Issuance start error:', err);
       if (err?.message === 'BATCH_NOT_FOUND') return res.status(404).json(fail('Batch not found'));

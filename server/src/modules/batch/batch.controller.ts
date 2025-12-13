@@ -8,6 +8,7 @@ import { s3 } from '../../config/aws-s3';
 import { env } from '../../config/env';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { extractS3KeyFromUrl } from '../../core/utils/s3Uploader';
+import { runInBackground } from '../../core/utils/asyncRunner';
 
 export const BatchController = {
   async upload(req: Request, res: Response) {
@@ -79,8 +80,9 @@ export const BatchController = {
   async retryFailed(req: Request, res: Response) {
     try {
       const { batchId } = req.params as { batchId: string };
-      const result = await IssuanceService.retryFailed(batchId);
-      return res.json(ok(result));
+      // Queue retry to avoid blocking request
+      runInBackground(() => IssuanceService.retryFailed(batchId), `issuance:retryFailed:${batchId}`);
+      return res.json(ok({ queued: true }));
     } catch (err: any) {
       console.error('Retry failed error:', err);
       if (err?.message === 'BATCH_NOT_FOUND') return res.status(404).json(fail('Batch not found'));
@@ -92,9 +94,9 @@ export const BatchController = {
     try {
       const { batchId } = req.params as { batchId: string };
       if (!batchId) return res.status(400).json(fail('batchId is required'));
-      const result = await BatchService.delete(batchId);
-      if (!result.deleted) return res.status(404).json(fail('Batch not found'));
-      return res.json(ok({ deleted: true }));
+      // Queue deletion to avoid blocking the request
+      runInBackground(() => BatchService.delete(batchId), `batch:delete:${batchId}`);
+      return res.json(ok({ queued: true }));
     } catch (err) {
       console.error('Delete batch error:', err);
       return res.status(500).json(fail('Failed to delete batch'));
