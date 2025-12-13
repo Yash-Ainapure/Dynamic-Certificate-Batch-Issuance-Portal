@@ -21,6 +21,7 @@ export default function ProjectDetail() {
   const [createdBatchId, setCreatedBatchId] = useState<string | null>(null);
   const [deletingProject, setDeletingProject] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
+  const [loadingBatches, setLoadingBatches] = useState(true);
   const { show } = useToast();
 
   useEffect(() => {
@@ -37,12 +38,15 @@ export default function ProjectDetail() {
 
   async function loadBatches(cursor?: string) {
     if (!id) return;
+    if (!cursor) setLoadingBatches(true);
     try {
       const res = await getBatches({ projectId: id, limit: 20, cursor });
       setBatches((prev) => (cursor ? [...prev, ...res.items] : res.items));
       setNextCursor(res.nextCursor);
     } catch (e) {
       show((e as Error).message, 'error');
+    } finally {
+      setLoadingBatches(false);
     }
   }
 
@@ -156,26 +160,34 @@ export default function ProjectDetail() {
       </Section>
 
       <Section title="Batches" className="space-y-3">
-        <div className="space-y-2">
-          {batches.map((b) => (
-            <div key={b.id} className="flex items-center justify-between rounded p-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
-              <Link to={`/batches/${b.id}`} className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">Batch {b.id}</div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">Validation: {b.validationStatus} | Processing: {b.processingStatus}</div>
-              </Link>
-              <div className="pl-3">
-                <Button
-                  variant="danger"
-                  disabled={deletingBatchId === b.id}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBatch(b.id); }}
-                >
-                  {deletingBatchId === b.id ? 'Deleting…' : 'Delete'}
-                </Button>
+        {loadingBatches && batches.length === 0 ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {batches.map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded p-3 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900">
+                <Link to={`/batches/${b.id}`} className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">Batch {b.id}</div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">Validation: {b.validationStatus} | Processing: {b.processingStatus}</div>
+                </Link>
+                <div className="pl-3">
+                  <Button
+                    variant="danger"
+                    disabled={deletingBatchId === b.id}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBatch(b.id); }}
+                  >
+                    {deletingBatchId === b.id ? 'Deleting…' : 'Delete'}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
-          {batches.length === 0 && <div className="text-gray-500 dark:text-gray-400">No batches yet.</div>}
-        </div>
+            ))}
+            {batches.length === 0 && !loadingBatches && <div className="text-gray-500 dark:text-gray-400">No batches yet.</div>}
+          </div>
+        )}
         {nextCursor && (
           <Button onClick={() => loadBatches(nextCursor)} variant="secondary">Load more</Button>
         )}
