@@ -13,7 +13,7 @@ export const ProjectController = {
       const templateUrl = await uploadToS3(file, "templates");
       const project = await ProjectService.create(req.body, templateUrl);
       res.json(ok(project));
-    } catch (err:any) {
+    } catch (err: any) {
       console.error("Create project error at project.controller.ts:", err);
 
       if (err.message === "Invalid issueDate") {
@@ -24,14 +24,19 @@ export const ProjectController = {
     }
   },
   async get(req: Request, res: Response) {
-    const id = req.params.id;
-    if (!id) {
-      return res.json(fail('Invalid ID'));
+    try {
+      const id = req.params.id;
+      if (!id) {
+        return res.json(fail('Invalid ID'));
+      }
+      const project = await ProjectService.get(id);
+      if (!project) {
+        return res.json(fail('Project not found'));
+      }
+      res.json(ok(project));
+    } catch (err: any) {
+      console.error("Get project error at project.controller.ts:", err);
+      return res.status(500).json(fail("Failed to get project"));
     }
-    const project = await ProjectService.get(id);
-    if (!project) {
-      return res.json(fail('Project not found'));
-    }
-    res.json(ok(project));
   },
 };

@@ -13,8 +13,14 @@ datasource db {
 }
 
 // 2. Enums (Strict status tracking)
-enum BatchStatus {
-  UPLOADED
+enum ValidationStatus {
+  VALID
+  INVALID
+}
+
+enum ProcessingStatus {
+  NOT_STARTED
+  QUEUED
   PROCESSING
   COMPLETED
   FAILED
@@ -61,7 +67,23 @@ model Batch {
   validRecords   Int         @default(0)
   zipFileUrl     String?
 
-  status         BatchStatus @default(UPLOADED)
+  // Validation & Processing Status
+  validationStatus  ValidationStatus @default(INVALID)
+  processingStatus  ProcessingStatus @default(NOT_STARTED)
+
+  // Validation details for UI
+  validationErrors  Json?
+  missingFilesCount Int @default(0)
+  extraFilesCount    Int @default(0)
+  duplicateFilesCount Int @default(0)
+
+  // Processing progress tracking
+  processedCount   Int @default(0)
+  successCount     Int @default(0)
+  failedCount      Int @default(0)
+  queuedAt         DateTime?
+  startedAt        DateTime?
+  finishedAt       DateTime?
 
   certificates   Certificate[]
 
@@ -77,7 +99,6 @@ model Certificate {
 
   // Data parsed from Excel
   excelCertId   String
-  studentName   String
   fileName      String
 
   // Processing Logic
