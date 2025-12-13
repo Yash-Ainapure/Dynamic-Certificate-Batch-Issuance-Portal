@@ -4,7 +4,7 @@ import pg from "pg";
 import { env } from './env';
 
 
-console.log("DATABASE_URL seen by Prisma:", env.DATABASE_URL);
+// console.log("DATABASE_URL seen by Prisma:", env.DATABASE_URL);
 
 const pool = new pg.Pool({
   connectionString: env.DATABASE_URL,
