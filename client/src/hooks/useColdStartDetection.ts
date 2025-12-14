@@ -50,7 +50,7 @@ export const useColdStartDetection = () => {
               refreshTimeoutRef.current = null;
             }
             // Auto-reload the page when backend comes online
-            window.location.reload();
+            window.location.replace(`${window.location.origin}/`);
           }
           // Stop health checking when backend is ready
           isChecking = false;
@@ -88,7 +88,7 @@ export const useColdStartDetection = () => {
           // Auto-refresh after 60 seconds
           if (!refreshTimeoutRef.current) {
             refreshTimeoutRef.current = window.setTimeout(() => {
-              window.location.reload();
+              window.location.replace(`${window.location.origin}/`);
             }, 60000);
           }
         }
