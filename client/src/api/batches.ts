@@ -3,14 +3,14 @@ import { endpoints } from './endpoints';
 import { unwrap } from './helpers';
 import type { Batch, Certificate } from '../types';
 
-export async function uploadBatchZip(params: { projectId: string; zip: File }): Promise<{ batch: Batch; summary: any }> {
+export async function uploadBatchZip(params: { projectId: string; zip: File }): Promise<{ queued?: boolean; batch?: Batch; summary?: any }> {
   const fd = new FormData();
   fd.append('projectId', params.projectId);
   fd.append('zip', params.zip);
   const resp = await axiosClient.post(`${endpoints.batches}/upload`, fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return unwrap<{ batch: Batch; summary: any }>(resp as any);
+  return unwrap<{ queued?: boolean; batch?: Batch; summary?: any }>(resp as any);
 }
 
 export async function getBatches(params: { projectId: string; limit?: number; cursor?: string }) {

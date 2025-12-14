@@ -31,9 +31,10 @@ export const BatchController = {
         return res.status(400).json(fail('Only .zip files are accepted'));
       }
 
-      const { batch, summary } = await BatchService.validateAndPersist(projectId, file);
+      // Queue validation & persistence to avoid blocking the request on large ZIPs
+      runInBackground(() => BatchService.validateAndPersist(projectId, file), `batch:upload:${projectId}`);
 
-      res.status(201).json(ok({ batch, summary }));
+      return res.status(202).json(ok({ queued: true }));
     } catch (err: any) {
       console.error('Batch upload error at batch.controller.ts:', err);
       if (err?.message === 'Project not found') {

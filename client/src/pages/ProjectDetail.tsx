@@ -85,13 +85,29 @@ export default function ProjectDetail() {
     if (!id || !zipFile) return;
     setLoading(true);
     try {
-      const { batch, summary } = await uploadBatchZip({ projectId: id, zip: zipFile });
-      // Prepend newest batch
-      setBatches((prev) => [batch, ...prev]);
+      const res = await uploadBatchZip({ projectId: id, zip: zipFile });
       setZipFile(null);
-      setLastSummary(summary);
-      setCreatedBatchId(batch.id);
-      show(`Batch uploaded (${summary.validationStatus})`, summary.validationStatus === 'VALID' ? 'success' : 'info');
+      if (res?.batch && res?.summary) {
+        // Immediate response path (backward compatible)
+        setBatches((prev) => [res.batch as Batch, ...prev]);
+        setLastSummary(res.summary);
+        setCreatedBatchId((res.batch as Batch).id);
+        const vs = (res.summary as any).validationStatus;
+        show(`Batch uploaded (${vs})`, vs === 'VALID' ? 'success' : 'info');
+      } else if (res?.queued) {
+        // Queued background processing
+        show('Upload queued. We will add the batch once validation finishes.', 'success');
+        // Trigger a refresh shortly to pick up the created batch record
+        setTimeout(() => {
+          loadBatches();
+        }, 3000);
+      } else {
+        // Fallback
+        show('Upload submitted.', 'success');
+        setTimeout(() => {
+          loadBatches();
+        }, 3000);
+      }
     } finally {
       setLoading(false);
     }
