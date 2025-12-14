@@ -44,15 +44,15 @@ export default function PdfPreview({ file, onPick, picked }: Props) {
   }
 
   return (
-    <div className="border rounded p-2">
+    <div className="inline-block bg-white border rounded p-2 overflow-visible">
       <div className="text-sm text-gray-600 mb-2">Click on the PDF to set the QR position.</div>
+      {picked && <div className="mt-2 text-sm text-gray-600">Selected position: x={picked.x}, y={picked.y}</div>}
       <div ref={containerRef} className="relative inline-block" onClick={handleClick}>
         <Document file={file} loading={<div className="p-6">Loading PDF…</div>}>
           <Page pageNumber={1} renderAnnotationLayer={false} renderTextLayer={false} />
         </Document>
         <div style={markerStyle} />
       </div>
-      {picked && <div className="mt-2 text-sm">Picked: x={picked.x}, y={picked.y}</div>}
     </div>
   );
 }

@@ -7,7 +7,6 @@ import Button from '../components/common/Button';
 import { useToast } from '../components/common/toast';
 import Section from '../components/common/Section';
 import Skeleton from '../components/common/Skeleton';
-import { upsertRecentProject } from '../utils/recent';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +28,6 @@ export default function ProjectDetail() {
     getProject(id)
       .then((p) => {
         setProject(p);
-        if (p?.id) upsertRecentProject({ id: p.id, name: p.name || '' });
       })
       .catch((e) => show((e as Error).message, 'error'));
     loadBatches();
@@ -126,7 +124,7 @@ export default function ProjectDetail() {
       )}
 
       <Section title="Upload Batch ZIP" className="space-y-3">
-        <input className='text-white' type="file" accept=".zip" onChange={(e) => setZipFile(e.target.files?.[0] || null)} />
+        <input className='text-white p-2 mb-2 border rounded' type="file" accept=".zip" onChange={(e) => setZipFile(e.target.files?.[0] || null)} />
         <div>
           <Button disabled={!zipFile || loading} onClick={handleUpload}>
             {loading ? 'Uploading...' : 'Upload ZIP'}

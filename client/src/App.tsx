@@ -9,6 +9,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import Dashboard from './pages/Dashboard';
 import { ColdStartAlert } from './components/common/ColdStartAlert';
 import { useColdStartDetection } from './hooks/useColdStartDetection';
+import { TourProvider } from './tour/TourContext';
 
 function App() {
   const { showAlert, timeRemaining, dismissAlert } = useColdStartDetection();
@@ -17,6 +18,7 @@ function App() {
     <ThemeProvider>
       <ToastProvider>
         <BrowserRouter>
+          <TourProvider>
           <ColdStartAlert 
             show={showAlert} 
             timeRemaining={timeRemaining} 
@@ -31,6 +33,7 @@ function App() {
             <Route path="/verify/:certId" element={<VerifyPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </TourProvider>
         </BrowserRouter>
       </ToastProvider>
     </ThemeProvider>

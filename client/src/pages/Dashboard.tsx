@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getRecentProjects } from '../utils/recent';
+import { useTour } from '../tour/TourContext';
 import Section from '../components/common/Section';
 import Skeleton from '../components/common/Skeleton';
 import { listProjects } from '../api/projects';
 import type { Project } from '../types';
 
 export default function Dashboard() {
-  const recent = getRecentProjects();
   const [projects, setProjects] = useState<Project[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const { start } = useTour();
 
   useEffect(() => {
     load();
@@ -28,31 +28,16 @@ export default function Dashboard() {
     }
   }
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="max-w-6xl mx-auto p-6 space-y-6" data-tour="dashboard-welcome">
       <h1 className="text-2xl font-semibold text-black dark:text-gray-400">Dashboard</h1>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5" data-tour="dashboard-projects">
           <div className="text-lg font-medium text-gray-900 dark:text-gray-100">Start a new project</div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Create a project, upload a template PDF, and choose QR placement.</p>
-          <Link to="/projects/new" className="inline-block mt-4 px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Create Project</Link>
+          <Link data-tour="nav-create-project" to="/projects/new" className="inline-block mt-4 px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Create Project</Link>
         </div>
       </div>
-
-      <Section title="Recent Projects">
-        {recent.length === 0 ? (
-          <div className="text-sm text-gray-600 dark:text-gray-400">No recent projects. Create a new project to get started.</div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-3">
-            {recent.map((p) => (
-              <Link key={p.id} to={`/projects/${p.id}`} className="rounded border border-gray-200 dark:border-gray-800 p-3 hover:bg-gray-50 dark:hover:bg-gray-900">
-                <div className="font-medium text-gray-900 dark:text-gray-100">{p.name || p.id}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Viewed {new Date(p.viewedAt).toLocaleString()}</div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Section>
 
       <Section title="All Projects">
         {loading && projects.length === 0 ? (
@@ -88,6 +73,15 @@ export default function Dashboard() {
           <li>Start issuance and track progress; open verification links for issued certificates.</li>
         </ol>
       </Section>
+
+      <div className="pt-2">
+        <button
+          onClick={() => start({ force: true, fromStep: 0 })}
+          className="text-sm px-3 py-2 rounded border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Restart Tutorial
+        </button>
+      </div>
     </div>
   );
 }
