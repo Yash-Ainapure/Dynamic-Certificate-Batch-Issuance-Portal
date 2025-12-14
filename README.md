@@ -8,6 +8,13 @@ A 3-step web app to:
 - Upload a ZIP with personalized PDFs and a single Excel mapping file.
 - Validate and issue batch with statuses and downloads.
 
+## High level architecture
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/1cee3230-877c-401a-a812-835ac0422d17" />
+
+## QR verification service
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/26dd64fb-4398-4e12-aed5-e9f7ff0787d3" />
+
+
 ## Tech Stack
 - Client: React + TypeScript + Vite + Tailwind
 - Server: Node.js + Express + TypeScript
@@ -17,9 +24,6 @@ A 3-step web app to:
 ## Monorepo Structure
 - Server: `server/`
 - Client: `client/`
-
-## Architecture (high-level)
-
 
 
 ## Prerequisites
