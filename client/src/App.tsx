@@ -7,12 +7,21 @@ import Navbar from './components/layout/Navbar';
 import { ToastProvider } from './components/common/toast';
 import { ThemeProvider } from './theme/ThemeProvider';
 import Dashboard from './pages/Dashboard';
+import { ColdStartAlert } from './components/common/ColdStartAlert';
+import { useColdStartDetection } from './hooks/useColdStartDetection';
 
 function App() {
+  const { showAlert, timeRemaining, dismissAlert } = useColdStartDetection();
+
   return (
     <ThemeProvider>
       <ToastProvider>
         <BrowserRouter>
+          <ColdStartAlert 
+            show={showAlert} 
+            timeRemaining={timeRemaining} 
+            onDismiss={dismissAlert} 
+          />
           <Navbar />
           <Routes>
             <Route path="/" element={<Dashboard />} />
